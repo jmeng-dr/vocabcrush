@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>心有灵犀 · 双人联想游戏</title>
+  <meta name="description" content="两个人各写一个词，根据上一轮的两个词继续联想，直到写出同一个词。">
+  <meta name="theme-color" content="#FAF6F1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#131117" media="(prefers-color-scheme: dark)">
+  <meta property="og:title" content="心有灵犀 · 来和我玩">
+  <meta property="og:description" content="两个人，各写一个词，直到写出同一个词。">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ 首页 ============ -->
+<section id="home" class="screen">
+  <div class="hero">
+    <div class="venn lg intro"><i></i><i></i></div>
+    <h1>心有灵犀</h1>
+    <p class="sub">两个人，各写一个词，直到写出同一个词</p>
+  </div>
+
+  <div class="card form">
+    <label class="label" for="nameInput">你的昵称</label>
+    <input id="nameInput" class="field" maxlength="12" placeholder="比如：小鱼" autocomplete="nickname">
+    <button id="createBtn" class="btn primary big block">创建房间</button>
+    <div class="divider">或者加入 TA 的房间</div>
+    <div class="join-row">
+      <input id="codeInput" class="field" maxlength="6" placeholder="6 位房间号" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <button id="joinBtn" class="btn">加入</button>
+    </div>
+  </div>
+
+  <button id="resumeBtn" class="resume hidden">回到上次的房间 <b></b> →</button>
+
+  <details class="rules">
+    <summary>怎么玩？</summary>
+    <ol>
+      <li>两人各自<b>偷偷写下一个词</b>，写好后同时揭晓。</li>
+      <li>下一轮，根据上一轮<b>两个人的词</b>，各自联想一个新词。</li>
+      <li>不断重复，直到你们写出<b>完全相同的词</b>——心有灵犀！</li>
+      <li>默认不能写已经出现过的词（可在房间里关闭）。</li>
+    </ol>
+  </details>
+</section>
+
+<!-- ============ 房间 / 等待 ============ -->
+<section id="lobby" class="screen hidden">
+  <header class="topbar">
+    <button class="icon-btn" data-act="leave" aria-label="离开房间">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="topbar-title">房间</div>
+    <div class="topbar-right"><span class="conn ing" data-conn></span></div>
+  </header>
+
+  <div id="lobbyLoading" class="center-state">
+    <div class="spinner"></div>
+    <div>正在进入房间…</div>
+  </div>
+
+  <div id="lobbyNotFound" class="center-state hidden">
+    <div class="venn"><i></i><i></i></div>
+    <h2>没有找到这个房间</h2>
+    <div>房间号 <b id="nfCode"></b> 可能写错了，或者房间已失效</div>
+    <div class="row">
+      <button class="btn" data-act="leave">返回</button>
+      <button class="btn primary" id="nfCreate">就用这个号开房间</button>
+    </div>
+  </div>
+
+  <div id="lobbyMain" class="hidden" style="display:flex;flex-direction:column;gap:16px">
+    <div class="card room-code-card">
+      <div class="label">房间号</div>
+      <div class="code" id="roomCode" title="点击复制">------</div>
+      <button id="shareBtn" class="btn ghost small">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        发送邀请链接给 TA
+      </button>
+    </div>
+
+    <div class="seats-row">
+      <div class="seat a" id="seatL"><div class="avatar"></div><div class="nm"></div><div class="st"></div></div>
+      <div class="venn sm"><i></i><i></i></div>
+      <div class="seat b" id="seatR"><div class="avatar"></div><div class="nm"></div><div class="st"></div></div>
+    </div>
+
+    <div class="card settings">
+      <div class="setting">
+        <span>每轮限时</span>
+        <div class="seg" id="limitSeg">
+          <button data-v="30">30 秒</button>
+          <button data-v="60">60 秒</button>
+          <button data-v="0">不限时</button>
+        </div>
+      </div>
+      <label class="setting">
+        <span>不能写出现过的词</span>
+        <input type="checkbox" id="noRepeat" class="switch">
+      </label>
+    </div>
+
+    <button id="startBtn" class="btn grad big block" disabled>开始游戏</button>
+    <p class="hint" id="lobbyHint"></p>
+  </div>
+</section>
+
+<!-- ============ 房间已满：选座 ============ -->
+<section id="seats" class="screen hidden">
+  <header class="topbar">
+    <button class="icon-btn" data-act="leave" aria-label="返回">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="topbar-title">房间已满</div>
+    <div></div>
+  </header>
+  <div class="center-state" style="flex:0;padding:24px 0 8px">
+    <div class="venn"><i></i><i></i></div>
+    <h2>这个房间已经有两位玩家啦</h2>
+    <div>如果你是其中一位（比如换了手机或浏览器），<br>点你的名字继续游戏。</div>
+  </div>
+  <div class="seat-list" id="seatList"></div>
+  <button class="btn ghost block" id="spectateBtn">只是看看（观战）</button>
+</section>
+
+<!-- ============ 游戏 ============ -->
+<section id="game" class="screen hidden">
+  <header class="topbar">
+    <button class="icon-btn" data-act="leave" aria-label="离开房间">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="topbar-title"><span id="roundTitle">第 1 轮</span><small id="gameCode"></small></div>
+    <div class="topbar-right">
+      <button class="icon-btn" id="menuBtn" aria-label="更多">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="names">
+    <div class="n a"><i class="dot" id="dotL"></i><span id="nameL"></span></div>
+    <div class="venn sm"><i></i><i></i></div>
+    <div class="n b"><span id="nameR"></span><i class="dot" id="dotR"></i></div>
+  </div>
+
+  <div class="history" id="history"></div>
+
+  <footer class="composer" id="composer">
+    <div class="timer-track"><div class="timer-bar" id="timerBar"></div></div>
+    <div class="prompt-row">
+      <div class="prompt" id="prompt"></div>
+      <span class="timer-txt" id="timerTxt"></span>
+    </div>
+    <form id="wordForm" class="input-row" autocomplete="off">
+      <input id="wordInput" class="field" maxlength="20" placeholder="写下你的词" enterkeyhint="send" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button type="submit" class="btn primary">提交</button>
+    </form>
+    <div class="waiting hidden" id="waiting"></div>
+    <div class="done-row hidden" id="doneRow">
+      <button class="btn" id="showResultBtn">查看结果</button>
+      <button class="btn grad" id="againBtn2">再来一局</button>
+    </div>
+    <div class="status-row" id="statusRow">
+      <span class="pstatus" id="pStatus"></span>
+      <span class="pstatus" id="conn2"><span class="conn" data-conn></span><span id="connTxt"></span></span>
+    </div>
+  </footer>
+</section>
+
+<!-- ============ 结果 ============ -->
+<div id="result" class="overlay hidden">
+  <div class="result-card">
+    <div class="venn lg merged" id="resultVenn"><i></i><i></i></div>
+    <div class="result-kicker" id="resultKicker">第 3 轮 · 心有灵犀</div>
+    <div class="result-word" id="resultWord"></div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="chain" id="chain"></div>
+    <div class="result-actions">
+      <button class="btn grad big block" id="againBtn">再来一局</button>
+      <div class="row">
+        <button class="btn" id="copyBtn">复制战绩</button>
+        <button class="btn" id="closeResult">回看每一轮</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 通用确认框 ============ -->
+<div id="dialog" class="overlay hidden">
+  <div class="sheet">
+    <h3 id="dlgTitle"></h3>
+    <p id="dlgText"></p>
+    <div class="row">
+      <button class="btn" id="dlgCancel">取消</button>
+      <button class="btn primary" id="dlgOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="confetti"></canvas>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script src="mqtt.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
